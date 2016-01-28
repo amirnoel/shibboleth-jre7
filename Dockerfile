@@ -1,5 +1,5 @@
 FROM tomcat:8.0.30-jre7
-MAINTAINER "Amir Noel <anoel@activedg.com>"
+MAINTAINER "Amir Noel <amir@rimaleon.com>"
 
 ENV IDP_SRC_DIR /usr/local/src/shibboleth-idp
 ENV IDP_HOME /opt/shibboleth-idp
