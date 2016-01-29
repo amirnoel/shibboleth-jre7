@@ -4,7 +4,6 @@ MAINTAINER "Amir Noel <amir@rimaleon.com>"
 ENV IDP_SRC_DIR /usr/local/src/shibboleth-idp
 ENV IDP_HOME /opt/shibboleth-idp
 
-VOLUME ["$CATALINA_HOME/conf", "$IDP_HOME/conf"]
 
 ADD tomcat-users.xml $CATALINA_HOME/conf/
 ADD server.xml $CATALINA_HOME/conf/
@@ -31,6 +30,7 @@ ENV IDP_VERSION 3.2.1
 ENV IDP_TGZ_URL https://shibboleth.net/downloads/identity-provider/$IDP_VERSION/shibboleth-identity-provider-$IDP_VERSION.tar.gz
 
 ADD install.properties "/tmp/install.properties"
+ADD idp.properties "/tmp/idp.properties"
 
 # see https://wiki.shibboleth.net/confluence/display/SHIB2/IdPApacheTomcatPrepare
 ADD idp.xml $CATALINA_HOME/conf/Catalina/localhost/idp.xml
@@ -42,11 +42,12 @@ RUN set -x \
 	&& curl -fSL  "$IDP_TGZ_URL.asc" -o shibboleth.tar.gz.asc \
 	&& gpg --verify shibboleth.tar.gz.asc \
 	&& tar -xvf shibboleth.tar.gz --strip-components=1 \
-	&& bin/install.sh -Didp.target.dir=$IDP_HOME -Didp.property.file=/tmp/install.properties \
+	&& bin/install.sh -Didp.target.dir=$IDP_HOME -Didp.property.file=/tmp/install.properties -Didp.merge.properties=/tmp/idp.properties \
 	&& rm shibboleth.tar.gz* \
-	&& rm -rf IDP_SRC_DIR
+	&& rm -rf IDP_SRC_DIR /tmp/*.properties
 
-        
-EXPOSE 8080
+VOLUME ["$CATALINA_HOME/conf", "$IDP_HOME/conf"]
+
 EXPOSE 8443
-CMD ["catalina.sh", "run"]
+
+CMD ["/bin/bash"]
