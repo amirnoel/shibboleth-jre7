@@ -26,6 +26,7 @@ RUN gpg --keyserver pool.sks-keyservers.net --recv-keys \
 
 ENV TOMCAT_KEY_ALIAS tomcat
 ENV IDP_KEY_ALIAS idp
+ENV TOMCAT_DNAME "CN=localhost, OU=Unknown, O=Unknown, L=Unknown, S=Unknown, C=US"
 ENV IDP_VERSION 3.2.1
 ENV IDP_TGZ_URL https://shibboleth.net/downloads/identity-provider/$IDP_VERSION/shibboleth-identity-provider-$IDP_VERSION.tar.gz
 
@@ -34,10 +35,17 @@ ADD idp.properties "/tmp/idp.properties"
 
 # see https://wiki.shibboleth.net/confluence/display/SHIB2/IdPApacheTomcatPrepare
 ADD idp.xml $CATALINA_HOME/conf/Catalina/localhost/idp.xml
-ADD keystore.jks $CATALINA_HOME/conf/keystore.jks
+#ADD keystore.jks $CATALINA_HOME/conf/keystore.jks
 
 # https://shibboleth.net/downloads/PGP_KEYS
 RUN set -x \
+	&& keytool -genkey \
+		-storepass changeit \
+		-keypass changeit \
+		-alias $TOMCAT_KEY_ALIAS \
+		-dname "$TOMCAT_DNAME" \
+		-keyalg RSA \
+		-keystore "$CATALINA_HOME/conf/keystore.jks" \
 	&& curl -fSL  "$IDP_TGZ_URL" -o shibboleth.tar.gz \
 	&& curl -fSL  "$IDP_TGZ_URL.asc" -o shibboleth.tar.gz.asc \
 	&& gpg --verify shibboleth.tar.gz.asc \
@@ -45,6 +53,8 @@ RUN set -x \
 	&& bin/install.sh -Didp.target.dir=$IDP_HOME -Didp.property.file=/tmp/install.properties -Didp.merge.properties=/tmp/idp.properties \
 	&& rm shibboleth.tar.gz* \
 	&& rm -rf IDP_SRC_DIR /tmp/*.properties
+
+WORKDIR $CATALINA_HOME
 
 VOLUME ["$CATALINA_HOME/conf", "$IDP_HOME/conf"]
 
