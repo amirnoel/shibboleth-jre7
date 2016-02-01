@@ -3,14 +3,14 @@ MAINTAINER "Amir Noel <amir@rimaleon.com>"
 
 ENV IDP_SRC_DIR /usr/local/src/shibboleth-idp
 ENV IDP_HOME /opt/shibboleth-idp
-
+ENV HSQLDB_HOME /usr/local/hsqldb
 
 ADD tomcat-users.xml $CATALINA_HOME/conf/
 ADD server.xml $CATALINA_HOME/conf/
 
 
 ENV PATH $IDP_HOME/bin:$PATH
-RUN mkdir -p "$IDP_SRC_DIR"
+RUN mkdir -p "$IDP_SRC_DIR/lib" "$HSQLDB_HOME"
 WORKDIR $IDP_SRC_DIR
 
 RUN gpg --keyserver pool.sks-keyservers.net --recv-keys \
@@ -29,6 +29,8 @@ ENV IDP_KEY_ALIAS idp
 ENV TOMCAT_DNAME "CN=localhost, OU=Unknown, O=Unknown, L=Unknown, S=Unknown, C=US"
 ENV IDP_VERSION 3.2.1
 ENV IDP_TGZ_URL https://shibboleth.net/downloads/identity-provider/$IDP_VERSION/shibboleth-identity-provider-$IDP_VERSION.tar.gz
+ENV HSQLDB_ZIP_URL http://sourceforge.net/projects/hsqldb/files/latest/download?source=files
+
 
 ADD install.properties "/tmp/install.properties"
 ADD idp.properties "/tmp/idp.properties"
@@ -50,13 +52,17 @@ RUN set -x \
 	&& curl -fSL  "$IDP_TGZ_URL.asc" -o shibboleth.tar.gz.asc \
 	&& gpg --verify shibboleth.tar.gz.asc \
 	&& tar -xvf shibboleth.tar.gz --strip-components=1 \
+        && curl -fSL "$HSQLDB_ZIP_URL" -o hsqldb.zip \
+        && unzip -d /tmp hsqldb.zip \
+        && cp -rf /tmp/hsqldb-*/* $HSQLDB_HOME \
+	&& $HSQLDB_HOME/lib/hsqldb*.jar  lib \
 	&& bin/install.sh -Didp.target.dir=$IDP_HOME -Didp.property.file=/tmp/install.properties -Didp.merge.properties=/tmp/idp.properties \
 	&& rm shibboleth.tar.gz* \
-	&& rm -rf IDP_SRC_DIR /tmp/*.properties
+	&& rm -rf IDP_SRC_DIR /tmp/*.properties /tmp/hsqldb* /tmp/*.properties
 
 WORKDIR $CATALINA_HOME
 
-VOLUME ["$CATALINA_HOME/conf", "$IDP_HOME/conf"]
+VOLUME ["$CATALINA_HOME/conf", "$IDP_HOME/conf","$IDP_HOME/credentials"]
 
 EXPOSE 8443
 
