@@ -2,15 +2,37 @@ FROM tomcat:8.0.30-jre7
 MAINTAINER "Amir Noel <amir@rimaleon.com>"
 
 ENV IDP_SRC_DIR /usr/local/src/shibboleth-idp
+ENV MYSQL_CONNECTOR_SRC_DIR /usr/local/src/mysql-connector
 ENV IDP_HOME /opt/shibboleth-idp
-ENV HSQLDB_HOME /usr/local/hsqldb
+ENV MYSQL_CONNECTOR_TGZ_URL https://cdn.mysql.com/Downloads/Connector-J/mysql-connector-java-5.1.38.tar.gz
+
+ENV TOMCAT_KEY_ALIAS tomcat
+ENV IDP_KEY_ALIAS idp
+ENV TOMCAT_DNAME "CN=localhost, OU=Unknown, O=Unknown, L=Unknown, S=Unknown, C=US"
+ENV IDP_VERSION 3.2.1
+ENV IDP_TGZ_URL https://shibboleth.net/downloads/identity-provider/$IDP_VERSION/shibboleth-identity-provider-$IDP_VERSION.tar.gz
 
 ADD tomcat-users.xml $CATALINA_HOME/conf/
 ADD server.xml $CATALINA_HOME/conf/
 
 
 ENV PATH $IDP_HOME/bin:$PATH
-RUN mkdir -p "$IDP_SRC_DIR/lib" "$HSQLDB_HOME"
+RUN mkdir -p "$IDP_SRC_DIR/lib" "$MYSQL_CONNECTOR_SRC_DIR"
+
+WORKDIR $MYSQL_CONNECTOR_SRC_DIR
+
+# https://dev.mysql.com/downloads/connector/j/
+RUN gpg --keyserver pgp.mit.edu --recv-keys \
+	A4A9406876FCBD3C456770C88C718D3B5072E1F5
+
+RUN set -x \ 
+	&& curl -fSL  "$MYSQL_CONNECTOR_TGZ_URL" -o mysql-connector.tar.gz \
+	&& curl -fSL  "$MYSQL_CONNECTOR_TGZ_URL.asc" -o mysql-connector.tar.gz.asc \
+	&& gpg --verify mysql-connector.tar.gz.asc \
+	&& tar -xvf mysql-connector.tar.gz --strip-components=1 \
+	&& cp mysql-connector-java-*.jar $IDP_SRC_DIR/lib \
+	&& rm -rf $MYSQL_CONNECTOR_SRC_DIR mysql-connector.tar.gz*
+
 WORKDIR $IDP_SRC_DIR
 
 RUN gpg --keyserver pool.sks-keyservers.net --recv-keys \
@@ -24,12 +46,6 @@ RUN gpg --keyserver pool.sks-keyservers.net --recv-keys \
 	6519B5DB7C1C8340A954ED0073C937457D0A1B3D \
 	71397D89D2F6CB065BDB2B96B150CCDE8DDA2C7D
 
-ENV TOMCAT_KEY_ALIAS tomcat
-ENV IDP_KEY_ALIAS idp
-ENV TOMCAT_DNAME "CN=localhost, OU=Unknown, O=Unknown, L=Unknown, S=Unknown, C=US"
-ENV IDP_VERSION 3.2.1
-ENV IDP_TGZ_URL https://shibboleth.net/downloads/identity-provider/$IDP_VERSION/shibboleth-identity-provider-$IDP_VERSION.tar.gz
-ENV HSQLDB_ZIP_URL http://sourceforge.net/projects/hsqldb/files/latest/download?source=files
 
 
 ADD install.properties "/tmp/install.properties"
@@ -37,7 +53,6 @@ ADD idp.properties "/tmp/idp.properties"
 
 # see https://wiki.shibboleth.net/confluence/display/SHIB2/IdPApacheTomcatPrepare
 ADD idp.xml $CATALINA_HOME/conf/Catalina/localhost/idp.xml
-#ADD keystore.jks $CATALINA_HOME/conf/keystore.jks
 
 # https://shibboleth.net/downloads/PGP_KEYS
 RUN set -x \
@@ -52,13 +67,9 @@ RUN set -x \
 	&& curl -fSL  "$IDP_TGZ_URL.asc" -o shibboleth.tar.gz.asc \
 	&& gpg --verify shibboleth.tar.gz.asc \
 	&& tar -xvf shibboleth.tar.gz --strip-components=1 \
-        && curl -fSL "$HSQLDB_ZIP_URL" -o hsqldb.zip \
-        && unzip -d /tmp hsqldb.zip \
-        && cp -rf /tmp/hsqldb-*/* $HSQLDB_HOME \
-	&& $HSQLDB_HOME/lib/hsqldb*.jar  lib \
 	&& bin/install.sh -Didp.target.dir=$IDP_HOME -Didp.property.file=/tmp/install.properties -Didp.merge.properties=/tmp/idp.properties \
 	&& rm shibboleth.tar.gz* \
-	&& rm -rf IDP_SRC_DIR /tmp/*.properties /tmp/hsqldb* /tmp/*.properties
+	&& rm -rf $IDP_SRC_DIR /tmp/*.properties /tmp/*.properties
 
 WORKDIR $CATALINA_HOME
 
