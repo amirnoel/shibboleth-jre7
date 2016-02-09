@@ -2,9 +2,7 @@ FROM tomcat:8.0.30-jre7
 MAINTAINER "Amir Noel <amir@rimaleon.com>"
 
 ENV IDP_SRC_DIR /usr/local/src/shibboleth-idp
-ENV MYSQL_CONNECTOR_SRC_DIR /usr/local/src/mysql-connector
 ENV IDP_HOME /opt/shibboleth-idp
-ENV MYSQL_CONNECTOR_TGZ_URL https://cdn.mysql.com/Downloads/Connector-J/mysql-connector-java-5.1.38.tar.gz
 
 ENV TOMCAT_KEY_ALIAS tomcat
 ENV IDP_KEY_ALIAS idp
@@ -15,23 +13,9 @@ ENV IDP_TGZ_URL https://shibboleth.net/downloads/identity-provider/$IDP_VERSION/
 ADD tomcat-users.xml $CATALINA_HOME/conf/
 ADD server.xml $CATALINA_HOME/conf/
 
-
+ADD files /ldap
 ENV PATH $IDP_HOME/bin:$PATH
-RUN mkdir -p "$IDP_SRC_DIR/lib" "$MYSQL_CONNECTOR_SRC_DIR"
-
-WORKDIR $MYSQL_CONNECTOR_SRC_DIR
-
-# https://dev.mysql.com/downloads/connector/j/
-RUN gpg --keyserver pgp.mit.edu --recv-keys \
-	A4A9406876FCBD3C456770C88C718D3B5072E1F5
-
-RUN set -x \ 
-	&& curl -fSL  "$MYSQL_CONNECTOR_TGZ_URL" -o mysql-connector.tar.gz \
-	&& curl -fSL  "$MYSQL_CONNECTOR_TGZ_URL.asc" -o mysql-connector.tar.gz.asc \
-	&& gpg --verify mysql-connector.tar.gz.asc \
-	&& tar -xvf mysql-connector.tar.gz --strip-components=1 \
-	&& cp mysql-connector-java-*.jar $IDP_SRC_DIR/lib \
-	&& rm -rf $MYSQL_CONNECTOR_SRC_DIR mysql-connector.tar.gz*
+RUN mkdir -p "$IDP_SRC_DIR"
 
 WORKDIR $IDP_SRC_DIR
 
@@ -45,8 +29,6 @@ RUN gpg --keyserver pool.sks-keyservers.net --recv-keys \
 	796D70C89BBF8D958925F2ED277EC86A07CEEB8B \
 	6519B5DB7C1C8340A954ED0073C937457D0A1B3D \
 	71397D89D2F6CB065BDB2B96B150CCDE8DDA2C7D
-
-
 
 ADD install.properties "/tmp/install.properties"
 ADD idp.properties "/tmp/idp.properties"
